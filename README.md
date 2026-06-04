@@ -5,18 +5,17 @@ Behavioural cloning pipeline for a SunFounder PiCar-V (Raspberry Pi 4) trained t
 ## Project Phases
 
 ### Phase 1 — Kaggle Challenge
-The first phase was a Kaggle competition to predict steering angle and speed from dashcam images. The pipeline used an EfficientNet-B0/MobileNetV3 ensemble with test-time augmentation, trained on ~14k labelled images.
+A Kaggle competition to predict steering angle and speed from dashcam images using a CNN with MobileNetV3 backbone, trained on ~14k labelled images.
 
 **Best private leaderboard MSE: 0.01342 (3rd/6)**
 
 ### Phase 2 — Live Testing
-The second phase was live on-track testing across 12 scenarios: lane keeping, stopping for pedestrians/objects, and responding to traffic signs (on t-junction, oval and figure-8 tracks). The live model was rebuilt from the Kaggle model with several key changes:
+Live on-track testing across 12 scenarios: lane keeping, stopping for pedestrians/objects, and responding to traffic signs across T-junction, oval, and figure-of-eight tracks. The live model was rebuilt from the Kaggle model with several key changes:
 
-- **Angle-only output** — speed is fixed at a default value; stopping is handled by a rule-based layer rather than the neural network
-- **Rule-based obstacle detection** — HSV-based floor segmentation in a centre-lane ROI triggers a speed=0 override when an object is detected in the path
-- **Improved training** — corner frame oversampling, horizontal flip augmentation with label inversion, and crop tuning guided by Grad-CAM
-- **Self-collected data** — additional ~3k images across oval and figure-8 scenarios, with per-source bottom cropping to handle a different camera position
-
+- **Angle-only output** — speed fixed at default; stopping handled by a rule-based layer
+- **Rule-based obstacle detection** — HSV floor segmentation in a centre-lane ROI; only fires when driving straight to avoid cornering false positives
+- **Improved training** — WeightedRandomSampler upweights corner frames 5x; horizontal flip inverts the angle label to balance left/right distribution
+- **Self-collected data** — ~3k additional images with per-source bottom cropping to account for a lower camera position, verified with Grad-CAM
 
 ## Repository Structure
 
@@ -48,20 +47,19 @@ PiCar/
 
 ## Training
 
-### Setup
-```bash
-pip install -r requirements.in
-```
+Install dependencies: `pip install -r requirements.in`
 
-### Data
-Not included (Kaggle competition data). Expected at `data/` relative to repo root
+Training data is not included (Kaggle competition data). Place it at `data/` relative to the repo root — see `main.py` for the expected directory structure.
+
+```bash
+python live_model/main.py            # train from scratch
+python live_model/main_fine_tune.py  # fine-tune from checkpoint
+```
 
 ## Deployment
 
-In 'model.py', update the model filename in `Model.__init__` to match your checkpoint:
+Update the model filename in `model.py` before deploying:
 ```python
 torch.load(os.path.join(model_dir, 'your_model.pth'), map_location='cpu')
 ```
-
-Copy `model.py` and the `.pth` checkpoint to the Pi
-
+Then copy `model.py` and the `.pth` checkpoint to the Pi 
